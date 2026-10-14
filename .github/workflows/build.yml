@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Checkout Repository
@@ -19,18 +19,16 @@ jobs:
         distribution: 'zulu'
         java-version: '17'
 
-    - name: Setup Flutter
-      uses: subosito/flutter-action@v2
-      with:
-        flutter-version: '3.22.0'
-        channel: 'stable'
+    - name: Clone Flutter SDK
+      run: |
+        git clone https://github.com/flutter/flutter.git -b 3.19.6 --depth 1 /home/runner/flutter
+        echo "/home/runner/flutter/bin" >> $GITHUB_PATH
+
+    - name: Flutter Version
+      run: flutter --version
 
     - name: Get Dependencies
       run: flutter pub get
-
-    - name: Run Analyze
-      run: flutter analyze
-      continue-on-error: true
 
     - name: Build APK
       run: flutter build apk --release
