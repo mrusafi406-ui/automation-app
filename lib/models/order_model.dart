@@ -4,6 +4,7 @@ class OrderItem {
   final int cartons;
   final int pcs;
   final double dpRate;
+  final int pcsPerCarton;
 
   OrderItem({
     required this.productId,
@@ -11,6 +12,7 @@ class OrderItem {
     required this.cartons,
     required this.pcs,
     required this.dpRate,
+    this.pcsPerCarton = 24,
   });
 
   Map<String, dynamic> toMap() {
@@ -20,13 +22,22 @@ class OrderItem {
       'cartons': cartons,
       'pcs': pcs,
       'dpRate': dpRate,
+      'pcsPerCarton': pcsPerCarton,
     };
   }
 
+  factory OrderItem.fromMap(Map<String, dynamic> map) {
+    return OrderItem(
+      productId: map['productId'] ?? '',
+      productName: map['productName'] ?? '',
+      cartons: map['cartons'] ?? 0,
+      pcs: map['pcs'] ?? 0,
+      dpRate: (map['dpRate'] ?? 0).toDouble(),
+      pcsPerCarton: map['pcsPerCarton'] ?? 24,
+    );
+  }
+
   double get totalValue => (cartons * pcsPerCarton * dpRate) + (pcs * dpRate);
-  
-  // এই ভেরিয়েবলটি পরে সেটআপ ট্যাব থেকে আসবে
-  int get pcsPerCarton => 24; 
 }
 
 class Order {
@@ -62,6 +73,23 @@ class Order {
       'shopId': shopId,
       'items': items.map((i) => i.toMap()).toList(),
       'totalValue': totalValue,
+      'timestamp': DateTime.now().toIso8601String(),
     };
+  }
+
+  factory Order.fromMap(String id, Map<String, dynamic> map) {
+    return Order(
+      id: id,
+      date: map['date'] ?? '',
+      day: map['day'] ?? '',
+      route: map['route'] ?? '',
+      soName: map['soName'] ?? '',
+      shopName: map['shopName'] ?? '',
+      shopId: map['shopId'] ?? '',
+      items: (map['items'] as List<dynamic>? ?? [])
+          .map((item) => OrderItem.fromMap(item))
+          .toList(),
+      totalValue: (map['totalValue'] ?? 0).toDouble(),
+    );
   }
 }

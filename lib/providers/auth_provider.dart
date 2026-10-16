@@ -8,11 +8,13 @@ class AuthProvider extends ChangeNotifier {
 
   User? _user;
   String? _role;
+  String? _name;
   bool _isLoading = true;
   bool _isFirstLogin = false;
 
   User? get user => _user;
   String? get role => _role;
+  String? get name => _name;
   bool get isLoading => _isLoading;
   bool get isFirstLogin => _isFirstLogin;
 
@@ -20,24 +22,27 @@ class AuthProvider extends ChangeNotifier {
     _auth.authStateChanges().listen((User? user) async {
       _user = user;
       if (user != null) {
-        await _fetchUserRole(user.uid);
+        await _fetchUserData(user.uid);
       } else {
         _role = null;
+        _name = null;
         _isLoading = false;
       }
       notifyListeners();
     });
   }
 
-  Future<void> _fetchUserRole(String uid) async {
+  Future<void> _fetchUserData(String uid) async {
     try {
       DocumentSnapshot doc = await _firestore.collection('users').doc(uid).get();
       if (doc.exists) {
-        _role = doc['role'];
-        _isFirstLogin = doc['isFirstLogin'] ?? false;
+        final data = doc.data() as Map<String, dynamic>;
+        _role = data['role'];
+        _name = data['name'];
+        _isFirstLogin = data['isFirstLogin'] ?? false;
       }
     } catch (e) {
-      debugPrint("Error fetching role: $e");
+      debugPrint("Error fetching user data: $e");
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -61,18 +66,5 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> signOut() async {
     await _auth.signOut();
-  }
-
-  Future<void> changePassword(String newPassword) async {
-    try {
-      await _user?.updatePassword(newPassword);
-      await _firestore.collection('users').doc(_user?.uid).update({
-        'isFirstLogin': false,
-      });
-      _isFirstLogin = false;
-      notifyListeners();
-    } catch (e) {
-      debugPrint("Error changing password: $e");
-    }
   }
 }

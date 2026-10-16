@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
 import 'package:intl/intl.dart';
 import 'package:automation_app/providers/auth_provider.dart';
 import 'package:automation_app/models/product_model.dart';
 import 'package:automation_app/models/order_model.dart';
+import 'package:automation_app/services/order_service.dart';
 
 class OrderSubTab extends StatefulWidget {
   const OrderSubTab({super.key});
@@ -14,42 +15,38 @@ class OrderSubTab extends StatefulWidget {
 }
 
 class _OrderSubTabState extends State<OrderSubTab> {
+  final OrderService _orderService = OrderService();
   bool _showGreeting = true;
-  String _selectedRoute = '';
-  final _cartonsController = TextEditingController();
-  final _pcsController = TextEditingController();
-  Product? _selectedProduct;
+  final String _selectedRoute = 'Dhaka Road';
+  String _shopName = 'Rahim General Store';
+  final String _shopId = 'shop_001';
+  final List<OrderItem> _currentOrderItems = [];
 
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
-    final soName = authProvider.user?.displayName ?? 'Sales Officer';
+    final soName = authProvider.name ?? 'Sales Officer';
 
     if (_showGreeting) {
       return _buildGreetingScreen(soName);
     }
-
     return _buildOrderCollectionScreen(soName);
   }
 
-  // গ্রিটিং স্ক্রিন
   Widget _buildGreetingScreen(String soName) {
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.waving_hand, size: 80, color: Colors.amber),
+          const Text('Hello', style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold)),
           const SizedBox(height: 20),
           Text(
             'Good Morning, $soName',
             style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 10),
-          const Text(
-            "Today's Route:",
-            style: TextStyle(fontSize: 16, color: Colors.grey),
-          ),
+          const Text("Today's Route:", style: TextStyle(fontSize: 16, color: Colors.grey)),
           const SizedBox(height: 10),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -57,163 +54,208 @@ class _OrderSubTabState extends State<OrderSubTab> {
               color: Colors.blue.shade50,
               borderRadius: BorderRadius.circular(20),
             ),
-            child: const Text(
-              'Dhaka Road',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blue),
+            child: Text(
+              _selectedRoute,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blue),
             ),
           ),
           const SizedBox(height: 30),
           ElevatedButton.icon(
-            onPressed: () {
-              setState(() {
-                _showGreeting = false;
-              });
-            },
+            onPressed: () => setState(() => _showGreeting = false),
             icon: const Icon(Icons.arrow_forward),
             label: const Text('Next'),
           ),
-          const SizedBox(height: 10),
-          TextButton.icon(
-            onPressed: () {
-              _showRouteSelectionDialog();
-            },
-            icon: const Icon(Icons.edit),
-            label: const Text('Change Route'),
-          ),
         ],
       ),
     );
   }
 
-  // রুট পরিবর্তন ডায়ালগ
-  void _showRouteSelectionDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Select Route'),
-        content: const Text('Route selection will be added soon.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Order Collection Screen
   Widget _buildOrderCollectionScreen(String soName) {
     final today = DateTime.now();
     final dateFormat = DateFormat('dd/MM/yyyy');
     final dayFormat = DateFormat('EEEE');
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+    return DefaultTabController(
+      length: 3,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // হেডার
-          Card(
-            elevation: 2,
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Pran Beverage Group', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blue)),
-                  const Text('Dealer: Bhai Bhai Store', style: TextStyle(fontSize: 14)),
-                  const Text('Joydebpur, Gazipur', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          // টার্গেট কার্ড
-          Card(
-            elevation: 2,
+          Container(
+            padding: const EdgeInsets.all(12),
             color: Colors.blue.shade50,
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Date: ${dateFormat.format(today)}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                      Text('Day: ${dayFormat.format(today)}'),
-                      const Text('Route: Dhaka Road'),
-                    ],
-                  ),
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text('Target C/V', style: TextStyle(fontWeight: FontWeight.bold)),
-                      Text('56 / 19650', style: TextStyle(fontSize: 18, color: Colors.blue, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                ],
-              ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Date: ${dateFormat.format(today)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text('Day: ${dayFormat.format(today)}'),
+                    Text('Route: $_selectedRoute'),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    const Text('Target C/V', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text('56 / 19650', style: TextStyle(fontSize: 18, color: Colors.blue, fontWeight: FontWeight.bold)),
+                    Text('Items: ${_currentOrderItems.length}', style: const TextStyle(fontSize: 12)),
+                  ],
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 20),
-          // প্রোডাক্ট লিস্ট
-          const Text('Order Collection', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 10),
-          _buildProductList(),
+          const TabBar(
+            labelColor: Colors.blue,
+            unselectedLabelColor: Colors.grey,
+            tabs: [
+              Tab(text: 'Orders'),
+              Tab(text: 'Memos'),
+              Tab(text: 'Report'),
+            ],
+          ),
+          Expanded(
+            child: TabBarView(
+              children: [
+                _buildOrdersTab(),
+                _buildMemosTab(),
+                _buildReportTab(soName),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildProductList() {
-    return FutureBuilder<QuerySnapshot>(
-      future: FirebaseFirestore.instance.collection('products').limit(20).get(),
+  Widget _buildOrdersTab() {
+    return Column(
+      children: [
+        if (_currentOrderItems.isNotEmpty)
+          Container(
+            padding: const EdgeInsets.all(8),
+            color: Colors.green.shade50,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('${_currentOrderItems.length} items added'),
+                ElevatedButton(
+                  onPressed: _showShopSelectionDialog,
+                  child: const Text('SAVE ORDER'),
+                ),
+              ],
+            ),
+          ),
+        Expanded(
+          child: FutureBuilder<firestore.QuerySnapshot>(
+            future: firestore.FirebaseFirestore.instance.collection('products').limit(50).get(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20),
+                    child: Text('No products available.\nAdd products from Firebase Console.'),
+                  ),
+                );
+              }
+              return ListView.builder(
+                itemCount: snapshot.data!.docs.length,
+                itemBuilder: (context, index) {
+                  final doc = snapshot.data!.docs[index];
+                  final product = Product.fromMap(doc.id, doc.data() as Map<String, dynamic>);
+                  return Card(
+                    margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    child: ListTile(
+                      title: Text(product.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Text('Code: ${product.code} | DP: Tk ${product.dpPerPcs.toStringAsFixed(2)}/pcs'),
+                      trailing: ElevatedButton(
+                        onPressed: () => _showOrderEntryDialog(product),
+                        child: const Text('ADD'),
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMemosTab() {
+    final today = DateFormat('dd/MM/yyyy').format(DateTime.now());
+    return FutureBuilder<List<Order>>(
+      future: _orderService.getOrdersByDate(today),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Card(
-            child: Padding(
-              padding: EdgeInsets.all(20),
-              child: Text('No products available. Please set up products first.'),
-            ),
-          );
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Center(child: Text('No memos for today'));
         }
-
-        return Column(
-          children: snapshot.data!.docs.map((doc) {
-            final product = Product.fromMap(doc.id, doc.data() as Map<String, dynamic>);
+        return ListView.builder(
+          itemCount: snapshot.data!.length,
+          itemBuilder: (context, index) {
+            final order = snapshot.data![index];
             return Card(
-              margin: const EdgeInsets.only(bottom: 8),
+              margin: const EdgeInsets.all(8),
               child: ListTile(
-                leading: Container(
-                  width: 50,
-                  height: 50,
-                  color: Colors.grey.shade200,
-                  child: const Icon(Icons.image, color: Colors.grey),
-                ),
-                title: Text(product.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text('Code: ${product.code} | DP: ৳${product.dpPerPcs}/pcs'),
-                trailing: ElevatedButton(
-                  onPressed: () => _showOrderEntryDialog(product),
-                  child: const Text('ADD'),
-                ),
+                leading: const CircleAvatar(child: Icon(Icons.receipt)),
+                title: Text(order.shopName),
+                subtitle: Text('${order.items.length} items | Tk ${order.totalValue.toStringAsFixed(0)}'),
               ),
             );
-          }).toList(),
+          },
         );
       },
     );
   }
 
-  // অর্ডার এন্ট্রি ডায়ালগ
+  Widget _buildReportTab(String soName) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Today Report', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 10),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                children: [
+                  _reportRow('Sales Officer', soName),
+                  _reportRow('Route', _selectedRoute),
+                  _reportRow('Target C/V', '56 / 19650'),
+                  _reportRow('Items Added', '${_currentOrderItems.length}'),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _reportRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.grey)),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
   void _showOrderEntryDialog(Product product) {
-    _selectedProduct = product;
-    _cartonsController.clear();
-    _pcsController.clear();
+    final cartonsController = TextEditingController();
+    final pcsController = TextEditingController();
 
     showDialog(
       context: context,
@@ -222,22 +264,18 @@ class _OrderSubTabState extends State<OrderSubTab> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            Text('DP: Tk ${product.dpPerPcs.toStringAsFixed(2)} / pcs'),
+            const SizedBox(height: 10),
             TextField(
-              controller: _cartonsController,
+              controller: cartonsController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Cartons',
-                border: OutlineInputBorder(),
-              ),
+              decoration: const InputDecoration(labelText: 'Cartons', border: OutlineInputBorder()),
             ),
             const SizedBox(height: 10),
             TextField(
-              controller: _pcsController,
+              controller: pcsController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Pcs',
-                border: OutlineInputBorder(),
-              ),
+              decoration: const InputDecoration(labelText: 'Pcs', border: OutlineInputBorder()),
             ),
           ],
         ),
@@ -248,16 +286,102 @@ class _OrderSubTabState extends State<OrderSubTab> {
           ),
           ElevatedButton(
             onPressed: () {
-              // TODO: Save order to Firestore
+              final cartons = int.tryParse(cartonsController.text) ?? 0;
+              final pcs = int.tryParse(pcsController.text) ?? 0;
+              if (cartons == 0 && pcs == 0) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please enter quantity')),
+                );
+                return;
+              }
+              setState(() {
+                _currentOrderItems.add(OrderItem(
+                  productId: product.code,
+                  productName: product.name,
+                  cartons: cartons,
+                  pcs: pcs,
+                  dpRate: product.dpPerPcs,
+                  pcsPerCarton: product.pcsPerCarton,
+                ));
+              });
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('${product.name} added to order')),
-              );
             },
-            child: const Text('Add to Order'),
+            child: const Text('Add'),
           ),
         ],
       ),
     );
+  }
+
+  void _showShopSelectionDialog() {
+    final shopController = TextEditingController(text: _shopName);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Select Shop'),
+        content: TextField(
+          controller: shopController,
+          decoration: const InputDecoration(labelText: 'Shop Name', border: OutlineInputBorder()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final newShopName = shopController.text;
+              setState(() {
+                _shopName = newShopName;
+              });
+              await _saveCurrentOrder(newShopName);
+            },
+            child: const Text('Save Order'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _saveCurrentOrder(String newShopName) async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final soName = authProvider.name ?? 'Sales Officer';
+    final today = DateTime.now();
+    final dateFormat = DateFormat('dd/MM/yyyy');
+    final dayFormat = DateFormat('EEEE');
+
+    double totalValue = 0;
+    for (final item in _currentOrderItems) {
+      totalValue += item.totalValue;
+    }
+
+    final order = Order(
+      id: '',
+      date: dateFormat.format(today),
+      day: dayFormat.format(today),
+      route: _selectedRoute,
+      soName: soName,
+      shopName: newShopName,
+      shopId: _shopId,
+      items: List.from(_currentOrderItems),
+      totalValue: totalValue,
+    );
+
+    try {
+      await _orderService.saveOrder(order);
+      if (!mounted) return;
+      setState(() {
+        _currentOrderItems.clear();
+      });
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Order saved successfully!')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to save: $e')),
+      );
+    }
   }
 }
