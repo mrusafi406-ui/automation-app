@@ -152,7 +152,18 @@ class _OrderSubTabState extends State<OrderSubTab> {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
-              if (snapshot.hasError) { return Center(child: Text("ERROR: ${snapshot.error}", style: TextStyle(color: Colors.red))); }
+              if (snapshot.hasError) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Text(
+                      'ERROR: ${snapshot.error}',
+                      style: const TextStyle(color: Colors.red),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                );
+              }
               if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                 return const Center(
                   child: Padding(
