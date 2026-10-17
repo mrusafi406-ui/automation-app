@@ -152,6 +152,7 @@ class _OrderSubTabState extends State<OrderSubTab> {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
+              if (snapshot.hasError) { return Center(child: Text("ERROR: ${snapshot.error}", style: TextStyle(color: Colors.red))); }
               if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                 return const Center(
                   child: Padding(
